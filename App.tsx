@@ -8,34 +8,61 @@ import { Toast } from './components/Toast';
 
 // ----- Subcomponents for App Structure -----
 
-const ConnectStep = ({ onConnect, isConnecting }: { onConnect: () => void, isConnecting: boolean }) => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-    <div className="max-w-md w-full space-y-8 text-center">
-      <div>
-        <div className="mx-auto h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center animate-bounce-slow">
-          <Icons.Robot className="h-10 w-10 text-indigo-600" />
+const ConnectStep = ({ onConnect, isConnecting }: { onConnect: (handle: string) => void, isConnecting: boolean }) => {
+  const [handleInput, setHandleInput] = useState('');
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="max-w-md w-full space-y-8 text-center">
+        <div>
+          <div className="mx-auto h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center animate-bounce-slow">
+            <Icons.Robot className="h-10 w-10 text-indigo-600" />
+          </div>
+          <h2 className="mt-6 text-3xl font-extrabold text-slate-900">TweetFlow AI</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Automate your X presence with intelligent content generation.
+          </p>
         </div>
-        <h2 className="mt-6 text-3xl font-extrabold text-slate-900">TweetFlow AI</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Automate your X presence with intelligent content generation.
-        </p>
+        <Card className="p-8">
+          <div className="space-y-4">
+            <p className="text-slate-600">
+              Enter your X (Twitter) handle to get started.
+            </p>
+            <div>
+              <label htmlFor="handle" className="sr-only">X Handle</label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">@</span>
+                </div>
+                <input
+                  type="text"
+                  name="handle"
+                  id="handle"
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md py-2 border"
+                  placeholder="elonmusk"
+                  value={handleInput}
+                  onChange={(e) => setHandleInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button 
+              onClick={() => onConnect(handleInput)} 
+              isLoading={isConnecting}
+              disabled={!handleInput}
+              className="w-full flex items-center justify-center gap-2 bg-black hover:bg-slate-800"
+            >
+              <Icons.Twitter className="h-5 w-5" />
+              {isConnecting ? 'Connecting...' : 'Connect with X'}
+            </Button>
+            <p className="text-xs text-slate-400 mt-2">
+              We use secure Web Intents to post. Your password is never required.
+            </p>
+          </div>
+        </Card>
       </div>
-      <Card className="p-8">
-        <p className="mb-6 text-slate-600">
-          Connect your account to start generating content based on your interests.
-        </p>
-        <Button 
-          onClick={onConnect} 
-          isLoading={isConnecting}
-          className="w-full flex items-center justify-center gap-2 bg-black hover:bg-slate-800"
-        >
-          <Icons.Twitter className="h-5 w-5" />
-          {isConnecting ? 'Connecting...' : 'Connect with X'}
-        </Button>
-      </Card>
     </div>
-  </div>
-);
+  );
+};
 
 const NavItem = ({ 
   icon: Icon, 
@@ -66,11 +93,11 @@ const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'create' | 'queue' | 'settings'>('dashboard');
   
   const [user, setUser] = useState<UserProfile>({
-    handle: '@alex_dev',
-    name: 'Alex Developer',
-    avatarUrl: 'https://picsum.photos/seed/alex/200',
+    handle: '',
+    name: '',
+    avatarUrl: 'https://picsum.photos/seed/user/200',
     isConnected: false,
-    interests: ['React', 'AI', 'Startup'],
+    interests: ['Tech', 'Innovation'],
     language: 'English',
     preferredTone: Tone.PROFESSIONAL,
     autoPilot: false,
@@ -99,53 +126,33 @@ const App: React.FC = () => {
 
   // --- Effects ---
   
-  // Simulate fetching initial data
-  useEffect(() => {
-    if (user.isConnected) {
-      setPosts([
-        {
-          id: '1',
-          content: 'Just deployed my first React 18 app! The concurrent features are game-changing. #ReactJS #WebDev',
-          status: PostStatus.POSTED,
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          likes: 42,
-          retweets: 5
-        },
-        {
-          id: '2',
-          content: 'AI is not replacing developers, it is augmenting them. Learning to prompt is the new syntax. #AI #Coding',
-          status: PostStatus.SCHEDULED,
-          scheduledTime: new Date(Date.now() + 3600000).toISOString(),
-          createdAt: new Date().toISOString()
-        }
-      ]);
-    }
-  }, [user.isConnected]);
-
   // Auto-Pilot Logic
   useEffect(() => {
     if (user.autoPilot && user.isConnected) {
       if (!autoPilotIntervalRef.current) {
-        addNotification("Auto-Pilot engaged. AI will post periodically.", "success");
-        // Simulate an auto-post every 15 seconds for demonstration purposes
-        // In a real app, this would be cron-job based or much longer intervals
+        addNotification("Auto-Pilot engaged. Generating drafts...", "success");
+        
+        // Generate a draft every 15 seconds
         autoPilotIntervalRef.current = setInterval(async () => {
           try {
             const tweetContent = await generateAutoTweet(user.interests, user.language, user.preferredTone);
             const newPost: Tweet = {
               id: Date.now().toString(),
               content: tweetContent,
-              status: PostStatus.POSTED,
+              // Auto-pilot creates SCHEDULED posts in this client-side version 
+              // because we need user click to open the Twitter Intent window.
+              status: PostStatus.SCHEDULED, 
               createdAt: new Date().toISOString(),
               likes: 0,
-              retweets: 0
+              retweets: 0,
+              scheduledTime: new Date().toISOString()
             };
             setPosts(prev => [newPost, ...prev]);
-            addNotification("Auto-Pilot just posted a new tweet!", "success");
+            addNotification("Auto-Pilot: New draft ready to post!", "info");
           } catch (e) {
             console.error(e);
           }
-        }, 10000); 
+        }, 15000); 
       }
     } else {
       if (autoPilotIntervalRef.current) {
@@ -164,13 +171,22 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleConnect = () => {
+  const handleConnect = (handle: string) => {
+    if (!handle) return;
     setIsConnecting(true);
-    // Simulate API handshake
+    
+    // Simulate API lookup
     setTimeout(() => {
-      setUser(prev => ({ ...prev, isConnected: true }));
+      const cleanHandle = handle.startsWith('@') ? handle : `@${handle}`;
+      setUser(prev => ({ 
+        ...prev, 
+        isConnected: true,
+        handle: cleanHandle,
+        name: cleanHandle.replace('@', ''), // Fallback name
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}` // Deterministic avatar
+      }));
       setIsConnecting(false);
-      addNotification("Successfully connected to Twitter account @alex_dev", "success");
+      addNotification(`Connected to ${cleanHandle}`, "success");
     }, 1500);
   };
 
@@ -183,7 +199,6 @@ const App: React.FC = () => {
     setGeneratedOptions([]); 
     const results = await generateTweetIdeas(user.interests, user.language, user.preferredTone);
     
-    // Handle case where API might return an error string in array
     if (results.length > 0 && results[0].includes("Error")) {
        addNotification("Failed to generate ideas. Check API Key.", "error");
     } else {
@@ -202,25 +217,44 @@ const App: React.FC = () => {
       scheduledTime: new Date(Date.now() + 7200000).toISOString() // +2 hours
     };
     setPosts(prev => [newPost, ...prev]);
-    // Remove specifically this tweet from options
     setGeneratedOptions(prev => prev.filter(t => t !== content));
-    addNotification("Tweet scheduled for later.", "success");
+    addNotification("Tweet saved to queue.", "success");
     setView('queue');
   };
 
-  const handlePostNow = (content: string) => {
-    const newPost: Tweet = {
-      id: Date.now().toString(),
-      content,
-      status: PostStatus.POSTED,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      retweets: 0
-    };
-    setPosts(prev => [newPost, ...prev]);
-    setGeneratedOptions(prev => prev.filter(t => t !== content));
-    addNotification("Published successfully!", "success");
-    setView('dashboard');
+  const handlePostNow = (content: string, id?: string) => {
+    // 1. Open Twitter Intent in new window
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(content)}`;
+    window.open(tweetUrl, '_blank', 'width=550,height=420');
+
+    // 2. Update local state to "Posted"
+    const now = new Date().toISOString();
+    
+    if (id) {
+      // Promoting a queued post
+      setPosts(prev => prev.map(p => 
+        p.id === id ? { ...p, status: PostStatus.POSTED, createdAt: now } : p
+      ));
+    } else {
+      // Posting fresh content
+      const newPost: Tweet = {
+        id: Date.now().toString(),
+        content,
+        status: PostStatus.POSTED,
+        createdAt: now,
+        likes: 0, 
+        retweets: 0
+      };
+      setPosts(prev => [newPost, ...prev]);
+      setGeneratedOptions(prev => prev.filter(t => t !== content));
+    }
+
+    addNotification("Opening X to post...", "success");
+    if (view === 'queue') {
+        // stay in queue if we just cleared one
+    } else {
+        setView('dashboard');
+    }
   };
 
   const handleDeletePost = (id: string) => {
@@ -380,13 +414,15 @@ const App: React.FC = () => {
                         </div>
                         <p className="text-slate-800 text-base whitespace-pre-wrap leading-relaxed">{post.content}</p>
                       </div>
+                      {post.status === PostStatus.SCHEDULED && (
+                        <Button 
+                          onClick={() => handlePostNow(post.content, post.id)} 
+                          className="text-xs bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          Post Now
+                        </Button>
+                      )}
                     </div>
-                    {post.status === PostStatus.POSTED && (
-                      <div className="mt-4 pt-3 border-t border-slate-50 flex items-center text-xs text-slate-500 space-x-6">
-                        <span className="flex items-center"><span className="font-semibold text-slate-700 mr-1">{post.likes || 0}</span> Likes</span>
-                        <span className="flex items-center"><span className="font-semibold text-slate-700 mr-1">{post.retweets || 0}</span> Reposts</span>
-                      </div>
-                    )}
                   </Card>
                 ))
               ) : (
@@ -460,7 +496,7 @@ const App: React.FC = () => {
                       <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
                         <Button variant="secondary" onClick={() => handleSchedule(tweet)} className="text-xs">
                           <Icons.Calendar className="h-4 w-4 mr-2" />
-                          Schedule
+                          Save Draft
                         </Button>
                         <Button onClick={() => handlePostNow(tweet)} className="text-xs">
                           <Icons.Send className="h-4 w-4 mr-2" />
@@ -488,8 +524,8 @@ const App: React.FC = () => {
                  <div className="mx-auto h-12 w-12 text-slate-300">
                    <Icons.Calendar className="h-full w-full" />
                  </div>
-                 <h3 className="mt-2 text-sm font-medium text-slate-900">No queued posts</h3>
-                 <p className="mt-1 text-sm text-slate-500">Get started by creating a new post.</p>
+                 <h3 className="mt-2 text-sm font-medium text-slate-900">No queued drafts</h3>
+                 <p className="mt-1 text-sm text-slate-500">Generate or create new posts to see them here.</p>
                  <div className="mt-6">
                    <Button onClick={() => setView('create')}>
                      <Icons.Plus className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
@@ -504,9 +540,16 @@ const App: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 text-sm text-slate-500 mb-2">
                           <Icons.Calendar className="h-4 w-4 text-indigo-500" />
-                          <span className="font-medium text-indigo-600">Scheduled for {post.scheduledTime ? new Date(post.scheduledTime).toLocaleString() : 'Soon'}</span>
+                          <span className="font-medium text-indigo-600">Draft / Scheduled</span>
                         </div>
-                        <p className="text-slate-800 text-lg">{post.content}</p>
+                        <p className="text-slate-800 text-lg mb-4">{post.content}</p>
+                        <Button 
+                          onClick={() => handlePostNow(post.content, post.id)} 
+                          className="text-xs bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          <Icons.Send className="h-3 w-3 mr-2" />
+                          Post to X
+                        </Button>
                       </div>
                       <div className="ml-4 flex flex-col space-y-2 opacity-50 group-hover:opacity-100 transition-opacity">
                         <button 
