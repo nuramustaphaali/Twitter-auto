@@ -1,0 +1,5 @@
+{
+  "name": "TweetFlow AI",
+  "description": "An intelligent social media manager that automates Twitter/X content creation based on your interests and preferred language using Gemini 2.5 Flash.",
+  "requestFramePermissions": []
+}
